@@ -1,0 +1,258 @@
+MASTER PROMPT: AI-Powered Agriculture Crop Advisory Assistant
+1. Header & System Persona Role
+You are an Expert Full-Stack Developer, Principal Software Architect, and AI Integration Specialist. You possess deep expertise in modern web technologies, specifically React.js, Node.js + Express.js, PostgreSQL, and integrating Google's Gemini AI via the @google/genai SDK. Your task is to build a complete, production-ready web application from scratch based on the specifications below. You will write clean, modular, scalable, and fully typed code (where applicable). Do not leave placeholders. Do not skip steps. Implement the entire application end-to-end.
+
+2. Core Mission Directive
+Develop a comprehensive "AI-Powered Agriculture Crop Advisory Assistant." This platform must serve as a smart, accessible companion for farmers, helping them mitigate risks associated with crop diseases, unpredictable weather patterns, and fluctuating market prices. The application must bridge the gap between complex agricultural science and actionable daily farming practices.
+
+3. Product Goal
+To provide farmers with instant, hyper-personalized, AI-generated crop advisory. By inputting specific crop details, environmental conditions, and visible symptoms (via text), the system will output precise disease diagnoses, weather impact mitigation strategies, and market trend awareness, ultimately reducing crop loss and increasing yield predictability.
+
+4. Mandatory Features
+Crop Portfolio Management: Users can log and track their current active crops, planting dates, and acreage.
+
+AI Disease Diagnosis & Treatment: Users can input symptoms and receive step-by-step treatment plans, chemical/organic recommendations, and prevention strategies.
+
+Weather Risk Mitigation: Provide actionable advice on how to protect specific crops based on current or upcoming adverse weather conditions.
+
+Market Intelligence Insights: AI-generated estimations on harvest timing to maximize market prices based on historical trends and crop maturity.
+
+Advisory History Logging: Every AI consultation must be saved for future reference and continuity of care.
+
+5. Technology Requirements
+Frontend: React.js (Vite), functional components, React Router DOM.
+
+Styling: Tailwind CSS (utility-first, responsive, accessible design).
+
+Backend: Node.js with Express.js.
+
+Database: Replit Postgres (PostgreSQL).
+
+AI Integration: @google/genai SDK (Strictly use the official Google Gen AI SDK).
+
+Validation: Zod for API payload and AI response schema validation.
+
+6. Application Pages (Routes)
+/ - Dashboard: Overview of user's active crops, recent advisory logs, and quick actions.
+
+/crops - Crop Management: Add, edit, or remove active crops from the user's farm profile.
+
+/advisory/new - New Advisory Request: The core form where users request AI help (Disease, Weather, or Market query).
+
+/advisory/:id - Advisory Result: Detailed view of a specific AI consultation and action plan.
+
+/history - Advisory Log: Chronological list of all past advice and diagnoses.
+
+7. User Flow
+User lands on the Dashboard and navigates to the Crop Management page to register a new crop (e.g., "Tomato - Roma", planted 30 days ago).
+
+User notices yellowing leaves and navigates to "New Advisory Request."
+
+User selects the affected crop from a dropdown, selects the query type ("Disease/Pest"), and describes the symptoms in a text area.
+
+The frontend sends this payload to the backend Express server.
+
+The backend validates the request with Zod, constructs a secure prompt, and calls the Gemini API via @google/genai.
+
+Gemini processes the query and returns structured JSON conforming to a strict schema.
+
+The backend saves the query and AI response to the Replit Postgres database.
+
+The frontend routes the user to the "Advisory Result" page, rendering the structured JSON data into readable, color-coded action items.
+
+8. Target Domains & Categorization
+Crop Categories: Cereals & Grains, Vegetables, Fruits, Cash Crops, Legumes.
+
+Advisory Types:
+
+DISEASE_PEST: Pathogens, insects, fungi.
+
+WEATHER_STRESS: Drought, frost, flood, heatwave.
+
+NUTRITION_SOIL: Fertilizer needs, soil pH issues, nutrient deficiencies.
+
+MARKET_HARVEST: Harvesting windows, post-harvest storage, market timing.
+
+9. Form & Advisory Configuration
+The /advisory/new form must include the following inputs:
+
+crop_id (Select dropdown populated from user's crops).
+
+advisory_type (Select dropdown based on the 4 types above).
+
+current_weather (Text input, e.g., "Heavy rain, 28°C").
+
+symptoms_description (Text area, min 20 characters).
+
+soil_type (Select: Clay, Sandy, Loam, Silt, Peat - Optional).
+
+10. Database Schema (Production SQL for PostgreSQL)
+Execute this schema exactly as written to set up the Replit Postgres database:
+
+SQL
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE crops (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    crop_name VARCHAR(100) NOT NULL,
+    crop_category VARCHAR(50) NOT NULL,
+    planting_date DATE NOT NULL,
+    acreage DECIMAL(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE advisory_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    crop_id UUID REFERENCES crops(id) ON DELETE CASCADE,
+    advisory_type VARCHAR(50) NOT NULL,
+    symptoms_description TEXT,
+    ai_response JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+11. Row Level Security (RLS) / Data Isolation Rules
+Ensure all database queries in the Node.js backend strictly filter by user_id.
+
+A user must not be able to fetch, update, or delete crops or advisory_logs belonging to another user.
+
+Implement middleware in Express that extracts the user_id (for this MVP, use a mock user ID passed in headers, e.g., x-user-id: <uuid>) and injects it into the request context for database operations.
+
+12. Backend API Routes
+Implement the following RESTful endpoints in Express:
+
+GET /api/crops - Fetch all crops for the authenticated user.
+
+POST /api/crops - Add a new crop.
+
+GET /api/history - Fetch all advisory logs for the user.
+
+GET /api/advisory/:id - Fetch a specific advisory log by ID.
+
+POST /api/advisory - The core AI generation endpoint. Receives form data, calls Gemini, saves to DB, and returns the log ID and AI response.
+
+13. Gemini SDK Setup & Server-Side Security
+Strict Requirement: Use the new @google/genai SDK. Do NOT use the legacy @google/generative-ai SDK.
+
+Initialize the client server-side ONLY:
+
+JavaScript
+import { GoogleGenAI } from '@google/genai';
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+Never expose the GEMINI_API_KEY on the frontend.
+
+Use the gemini-2.5-flash model for fast, cost-effective reasoning.
+
+14. AI System Prompt
+Pass this system instruction to the Gemini model initialization:
+"You are 'AgriAssist', an expert agricultural AI. Your goal is to help farmers diagnose crop issues, manage weather stress, and optimize harvest timing. You must be practical, safe, and highly structured in your advice. Always prioritize organic and low-cost interventions first before recommending heavy chemical treatments. If an issue sounds extremely dangerous or unrecoverable, advise consulting a local agricultural extension office immediately."
+
+15. Detailed AI Prompts (with required JSON Schemas)
+When calling the Gemini API, you must use responseSchema to force structured JSON output.
+
+User Prompt Template:
+"Analyze the following crop issue:
+Crop: {crop_name} (Planted: {days_ago} days ago)
+Issue Type: {advisory_type}
+Symptoms/Context: {symptoms_description}
+Weather Context: {current_weather}
+Provide a diagnosis and an actionable step-by-step treatment plan."
+
+16. Zod Validation Requirements
+Use this exact Zod schema for both validating the backend API response and defining the Gemini responseSchema:
+
+JavaScript
+import { z } from "zod";
+
+export const advisoryResponseSchema = z.object({
+  primary_diagnosis: z.string().describe("The most likely issue or disease affecting the crop."),
+  confidence_level: z.enum(["High", "Medium", "Low"]).describe("Confidence level in the diagnosis based on symptoms."),
+  immediate_actions: z.array(z.string()).describe("1-3 critical steps the farmer must take in the next 24 hours."),
+  treatment_plan: z.array(z.object({
+    step_number: z.number(),
+    description: z.string(),
+    type: z.enum(["Organic", "Chemical", "Cultural", "Market"])
+  })).describe("Step-by-step resolution plan."),
+  preventative_measures: z.array(z.string()).describe("How to prevent this in the future or next season.")
+});
+Instruct the Gemini SDK to return data matching this schema by utilizing the structured outputs feature of the @google/genai SDK.
+
+17. Frontend Components List
+Navbar: App navigation and user profile mockup.
+
+DashboardStats: Cards showing total crops, recent alerts.
+
+CropCard: Displays crop name, days since planting, and category.
+
+AdvisoryForm: The complex form with validation for requesting AI help.
+
+ActionPlanView: A highly visual, color-coded component that maps over the JSON response (e.g., Red for immediate actions, Green for organic treatments, Yellow for chemical).
+
+HistoryList: A table or list view of past queries.
+
+18. Security Requirements
+Implement helmet in Express for secure HTTP headers.
+
+Implement cors to restrict API access to the frontend domain.
+
+Implement express-rate-limit on the /api/advisory endpoint to prevent AI API abuse (e.g., max 5 requests per 15 minutes per IP).
+
+Validate all incoming POST payloads using Zod before interacting with the database or AI.
+
+19. Environment Variables Template
+Provide a .env.example file containing:
+
+PORT=5000
+DATABASE_URL=postgres://user:password@host:port/database
+GEMINI_API_KEY=your_gemini_api_key_here
+FRONTEND_URL=http://localhost:5173
+20. Suggested Folder Structure
+Plaintext
+/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/ (API calls)
+│   │   └── App.jsx
+│   ├── tailwind.config.js
+│   └── package.json
+├── backend/
+│   ├── src/
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   ├── db/
+│   │   ├── services/ (Gemini AI service)
+│   │   └── server.js
+│   └── package.json
+└── README.md
+21. Implementation Phases
+Phase 1: Backend Foundation. Set up Node/Express, connect to Replit Postgres, run table creation scripts, set up CRUD routes for crops.
+
+Phase 2: Frontend Foundation. Set up React + Vite, Tailwind CSS, routing, and basic pages (Dashboard, Crop Management).
+
+Phase 3: AI Engine. Implement @google/genai on the backend, create the structured output prompt using Zod schemas, and build the POST endpoint.
+
+Phase 4: Frontend Integration. Connect the frontend Advisory Form to the AI endpoint. Build the ActionPlanView to render the JSON response beautifully.
+
+Phase 5: Polish. Add rate limiting, loading states, error boundaries, and final UI adjustments.
+
+22. Acceptance Criteria
+The application runs without errors locally.
+
+The database successfully saves and retrieves crops and logs.
+
+The Gemini AI strictly returns valid JSON matching the Zod schema.
+
+The frontend handles loading states gracefully while waiting for the AI response (using a skeleton loader or spinner).
+
+The UI is fully responsive (mobile-first for farmers in the field).
+
+The code is modular, well-commented, and robust.
+
+23. Final Instruction to Coding Agent
+You are now ready to begin. Start by confirming you understand the architecture, then immediately proceed to Phase 1 and output the code for the Node.js backend setup and database initialization. Do not stop until the entire application is built. Begin now.

@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API for the AgriAssist crop advisory companion
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Farmer dashboard operations
+  - name: crops
+    description: Crop portfolio operations
+  - name: advisory
+    description: AI advisory operations
 paths:
   /healthz:
     get:
@@ -24,7 +30,144 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get the farmer dashboard
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /crops:
+    get:
+      operationId: listCrops
+      tags: [crops]
+      summary: List the user's active crops
+      responses:
+        "200":
+          description: Active crop portfolio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Crop"
+    post:
+      operationId: createCrop
+      tags: [crops]
+      summary: Add a crop to the portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CropInput"
+      responses:
+        "201":
+          description: Crop created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Crop"
+        "400":
+          description: Invalid crop payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /crops/{id}:
+    delete:
+      operationId: deleteCrop
+      tags: [crops]
+      summary: Remove a crop from the portfolio
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Crop removed
+        "404":
+          description: Crop not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /history:
+    get:
+      operationId: listAdvisoryHistory
+      tags: [advisory]
+      summary: List previous advisory consultations
+      responses:
+        "200":
+          description: Advisory history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdvisorySummary"
+  /advisory/{id}:
+    get:
+      operationId: getAdvisory
+      tags: [advisory]
+      summary: Get an advisory consultation
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Advisory consultation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisoryDetail"
+        "404":
+          description: Advisory not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /advisory:
+    post:
+      operationId: createAdvisory
+      tags: [advisory]
+      summary: Generate and save a crop advisory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvisoryInput"
+      responses:
+        "201":
+          description: Advisory created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisoryDetail"
+        "400":
+          description: Invalid advisory payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Advisory rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +176,212 @@ components:
           type: string
       required:
         - status
+    Crop:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        crop_name:
+          type: string
+        crop_category:
+          type: string
+        planting_date:
+          type: string
+          format: date
+        acreage:
+          type: ["number", "null"]
+        created_at:
+          type: string
+          format: date-time
+        days_since_planting:
+          type: integer
+        icon:
+          type: string
+      required:
+        - id
+        - crop_name
+        - crop_category
+        - planting_date
+        - acreage
+        - created_at
+        - days_since_planting
+        - icon
+    CropInput:
+      type: object
+      properties:
+        crop_name:
+          type: string
+          minLength: 2
+        crop_category:
+          type: string
+          enum: [Cereals & Grains, Vegetables, Fruits, Cash Crops, Legumes]
+        planting_date:
+          type: string
+          format: date
+        acreage:
+          type: ["number", "null"]
+          minimum: 0
+      required:
+        - crop_name
+        - crop_category
+        - planting_date
+    AdvisoryResponse:
+      type: object
+      properties:
+        primary_diagnosis:
+          type: string
+        confidence_level:
+          type: string
+          enum: [High, Medium, Low]
+        immediate_actions:
+          type: array
+          items:
+            type: string
+        treatment_plan:
+          type: array
+          items:
+            $ref: "#/components/schemas/TreatmentStep"
+        preventative_measures:
+          type: array
+          items:
+            type: string
+      required:
+        - primary_diagnosis
+        - confidence_level
+        - immediate_actions
+        - treatment_plan
+        - preventative_measures
+    TreatmentStep:
+      type: object
+      properties:
+        step_number:
+          type: number
+        description:
+          type: string
+        type:
+          type: string
+          enum: [Organic, Chemical, Cultural, Market]
+      required:
+        - step_number
+        - description
+        - type
+    AdvisoryInput:
+      type: object
+      properties:
+        crop_id:
+          type: string
+          format: uuid
+        advisory_type:
+          type: string
+          enum: [DISEASE_PEST, WEATHER_STRESS, NUTRITION_SOIL, MARKET_HARVEST]
+        current_weather:
+          type: string
+          minLength: 2
+        symptoms_description:
+          type: string
+          minLength: 20
+        soil_type:
+          type: ["string", "null"]
+          enum: [Clay, Sandy, Loam, Silt, Peat, null]
+      required:
+        - crop_id
+        - advisory_type
+        - current_weather
+        - symptoms_description
+    AdvisorySummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        crop_id:
+          type: string
+          format: uuid
+        crop_name:
+          type: string
+        advisory_type:
+          type: string
+        symptoms_description:
+          type: string
+        primary_diagnosis:
+          type: string
+        confidence_level:
+          type: string
+          enum: [High, Medium, Low]
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - crop_id
+        - crop_name
+        - advisory_type
+        - symptoms_description
+        - primary_diagnosis
+        - confidence_level
+        - created_at
+    AdvisoryDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdvisorySummary"
+        - type: object
+          properties:
+            current_weather:
+              type: string
+            soil_type:
+              type: ["string", "null"]
+            ai_response:
+              $ref: "#/components/schemas/AdvisoryResponse"
+          required:
+            - current_weather
+            - soil_type
+            - ai_response
+    DashboardSummary:
+      type: object
+      properties:
+        total_crops:
+          type: integer
+        advisories_this_month:
+          type: integer
+        attention_needed:
+          type: integer
+        latest_weather:
+          type: object
+          properties:
+            label:
+              type: string
+            temperature:
+              type: string
+            description:
+              type: string
+            severity:
+              type: string
+              enum: [low, moderate, high]
+          required:
+            - label
+            - temperature
+            - description
+            - severity
+        recent_advisories:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisorySummary"
+        crops:
+          type: array
+          items:
+            $ref: "#/components/schemas/Crop"
+      required:
+        - total_crops
+        - advisories_this_month
+        - attention_needed
+        - latest_weather
+        - recent_advisories
+        - crops
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
 
